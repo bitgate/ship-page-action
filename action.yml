@@ -1,0 +1,352 @@
+name: 'Deploy to hurl.page'
+description: 'Instant anonymous HTML hosting — deploy an HTML file, zip, or directory to hurl.page and get a live URL'
+branding:
+  icon: upload-cloud
+  color: orange
+
+inputs:
+  path:
+    description: 'File (.html/.htm or .zip) or directory to deploy. Omit it to auto-detect a known report — see `engine`'
+    required: false
+    default: ''
+  api-key:
+    description: 'hurl.page API key (hp_...), pass via secrets. Falls back to the HURL_API_KEY env var. Optional for small drops; required for drops above the per-request file cap (chunked upload, needs an active subscription)'
+    required: false
+    default: ''
+  name:
+    description: 'Named drop alias (1-41 chars of a-z0-9-, no --). Redeploying the same name replaces content but keeps the URL — preview channels. Requires api-key with an active subscription'
+    required: false
+    default: ''
+  ttl:
+    description: 'Drop lifetime in seconds (min 60). Default: 7 days anonymous/free, no expiry for subscribers. Free plan caps ttl at 7 days'
+    required: false
+    default: ''
+  include:
+    description: 'Newline-separated glob patterns; only matching files are deployed. Applies to directory/zip deploys. Default: all files'
+    required: false
+    default: ''
+  exclude:
+    description: 'Newline-separated glob patterns; matching files are skipped (wins over include). Applies to directory/zip deploys. .git is always excluded'
+    required: false
+    default: ''
+  comment:
+    description: 'Set to true to post/update a sticky PR comment with the deploy URL. Needs github-token with pull-requests: write'
+    required: false
+    default: 'false'
+  github-token:
+    description: 'Token used for the PR comment'
+    required: false
+    default: ${{ github.token }}
+  base-url:
+    description: 'Override the hurl.page endpoint (staging/self-hosted). Defaults to https://hurl.page'
+    required: false
+    default: ''
+  engine:
+    description: 'Report preset(s) to auto-detect instead of a manual path. "auto" (or leaving both path and engine empty) probes every known report and deploys all it finds — 1 match lands directly, 2+ get a branded multi-report shell. A name like "playwright" scopes to one; a comma list "playwright,jacoco" forces a set. Known: playwright, jacoco, gradle-test, coverage-py, storybook, allure'
+    required: false
+    default: ''
+  working-directory:
+    description: 'Directory the whole action is scoped to — detection, path resolution and staging all happen relative to it. Use it for monorepos (e.g. client)'
+    required: false
+    default: ''
+  root-file:
+    description: 'Entry file the deployed URL should open on (e.g. report.html for Robot Framework). When it is not index.html, a tiny redirect index.html is injected so the live URL lands on the right page'
+    required: false
+    default: ''
+
+outputs:
+  url:
+    description: 'Public URL of the deployed site'
+    value: ${{ steps.deploy.outputs.url }}
+  slug:
+    description: 'Deployment slug'
+    value: ${{ steps.deploy.outputs.slug }}
+  expires_at:
+    description: 'ISO timestamp when the drop expires (empty = never)'
+    value: ${{ steps.deploy.outputs.expires_at }}
+  replaced:
+    description: 'true when a named drop redeploy replaced existing content'
+    value: ${{ steps.deploy.outputs.replaced }}
+
+runs:
+  using: composite
+  steps:
+    - id: plan
+      shell: bash
+      env:
+        SRC_INPUT: ${{ inputs.path }}
+        ENGINE: ${{ inputs.engine }}
+        ROOT_FILE: ${{ inputs.root-file }}
+        WORKDIR: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        CWD="${WORKDIR:-.}"
+        if [ -n "$SRC_INPUT" ] && [ -n "$ENGINE" ]; then
+          echo "::error::set either 'path' or 'engine', not both"; exit 1
+        fi
+        # Legacy fast-path: explicit path, no engine/root-file → deploy as-is (scoped to working-directory)
+        if [ -n "$SRC_INPUT" ] && [ -z "$ENGINE" ] && [ -z "$ROOT_FILE" ]; then
+          if [ "$CWD" = "." ]; then RESOLVED="$SRC_INPUT"; else RESOLVED="$CWD/$SRC_INPUT"; fi
+          echo "deploy_src=$RESOLVED" >> "$GITHUB_OUTPUT"
+          echo "label=" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        STAGE="$(mktemp -d "${RUNNER_TEMP:-/tmp}/hurlpage.XXXXXX")"
+        HP_CWD="$CWD" HP_ENGINE="$ENGINE" HP_PATH="$SRC_INPUT" HP_ROOT_FILE="$ROOT_FILE" HP_STAGE="$STAGE" \
+          node "$GITHUB_ACTION_PATH/lib/plan.mjs"
+
+    - id: deploy
+      shell: bash
+      env:
+        SRC: ${{ steps.plan.outputs.deploy_src }}
+        LABEL: ${{ steps.plan.outputs.label }}
+        API_KEY: ${{ inputs.api-key }}
+        NAME: ${{ inputs.name }}
+        TTL: ${{ inputs.ttl }}
+        INCLUDE_RAW: ${{ inputs.include }}
+        EXCLUDE_RAW: ${{ inputs.exclude }}
+        BASE_INPUT: ${{ inputs.base-url }}
+      run: |
+        set -euo pipefail
+        [ -e "$SRC" ] || { echo "::error::path '$SRC' does not exist"; exit 1; }
+
+        API_KEY="${API_KEY:-${HURL_API_KEY:-}}"
+        BASE="${BASE_INPUT:-${HURL_PAGE_BASE_URL:-https://hurl.page}}"
+        CAP=100
+        AUTH=()
+        if [ -n "$API_KEY" ]; then
+          CAP=900
+          AUTH=(-H "Authorization: Bearer $API_KEY")
+        fi
+
+        QS=""
+        if [ -n "$NAME" ]; then
+          [ -n "$API_KEY" ] || { echo "::error::'name' requires the 'api-key' input (named drops are a subscriber feature)"; exit 1; }
+          if ! [[ "$NAME" =~ ^[a-z0-9-]{1,41}$ ]] || [[ "$NAME" == *--* ]]; then
+            echo "::error::invalid name '$NAME' — 1-41 chars of [a-z0-9-], no '--'"; exit 1
+          fi
+          QS="name=$NAME"
+        fi
+        if [ -n "$TTL" ]; then
+          [[ "$TTL" =~ ^[0-9]+$ ]] || { echo "::error::invalid ttl '$TTL' — must be an integer number of seconds (min 60)"; exit 1; }
+          QS="${QS:+$QS&}ttl=$TTL"
+        fi
+        DEPLOY_URL="$BASE/deploy${QS:+?$QS}"
+
+        WORK=$(mktemp -d)
+        trap 'rm -rf "$WORK"' EXIT
+        RESP="$WORK/resp"
+
+        mapfile -t INCLUDE < <(printf '%s\n' "$INCLUDE_RAW" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d')
+        mapfile -t EXCLUDE < <(printf '%s\n' "$EXCLUDE_RAW" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e '/^$/d')
+        FILTERS=$(( ${#INCLUDE[@]} + ${#EXCLUDE[@]} ))
+
+        match_any() {
+          local path=$1 pat
+          shift
+          for pat in "$@"; do
+            [[ "$path" == $pat ]] && return 0
+          done
+          return 1
+        }
+
+        apply_filters() {
+          local f
+          while IFS= read -r f; do
+            if match_any "$f" '.git' '.git/*' '*/.git/*' "${EXCLUDE[@]}"; then continue; fi
+            if [ "${#INCLUDE[@]}" -gt 0 ] && ! match_any "$f" "${INCLUDE[@]}"; then continue; fi
+            printf '%s\n' "$f"
+          done
+        }
+
+        hurl_post() {
+          local code attempt
+          for attempt in 1 2 3 4; do
+            code=$(curl -sS -o "$RESP" -w '%{http_code}' \
+              -X POST "$1" \
+              -H "Content-Type: $2" \
+              "${AUTH[@]}" \
+              --data-binary @"$3")
+            if [ "$code" = "429" ] && [ "$attempt" -lt 4 ]; then
+              WAIT=$((20 * attempt))
+              echo "::warning::hurl.page rate limit hit (429) — retrying in ${WAIT}s (attempt $attempt/3)"
+              sleep "$WAIT"
+              continue
+            fi
+            break
+          done
+          case "$code" in
+            2*) ;;
+            429) echo "::error::hurl.page rate limit hit (~10 deploys/min/IP) — retries exhausted"; exit 1 ;;
+            *) echo "::error::hurl.page deploy failed (HTTP $code): $(cat "$RESP")"; exit 1 ;;
+          esac
+        }
+
+        DIR=""
+        SINGLE_BODY=""
+        SINGLE_TYPE=""
+        if [ -d "$SRC" ]; then
+          DIR="$SRC"
+        else
+          case "$SRC" in
+            *.html|*.htm)
+              [ "$FILTERS" -eq 0 ] || echo "::notice::include/exclude are ignored for single-file deploys"
+              SINGLE_BODY="$SRC"; SINGLE_TYPE="text/html"
+              ;;
+            *.zip)
+              COUNT=$(unzip -Z1 "$SRC" | { grep -cv '/$' || true; })
+              if [ "$FILTERS" -eq 0 ] && [ "$COUNT" -le "$CAP" ]; then
+                SINGLE_BODY="$SRC"; SINGLE_TYPE="application/zip"
+              else
+                mkdir "$WORK/unzipped"
+                unzip -q "$SRC" -d "$WORK/unzipped"
+                DIR="$WORK/unzipped"
+              fi
+              ;;
+            *) echo "::error::unsupported file type '$SRC' — use .html, .zip, or a directory"; exit 1 ;;
+          esac
+        fi
+
+        if [ -n "$DIR" ]; then
+          cd "$DIR"
+          find . -type f | sed 's|^\./||' | LC_ALL=C sort | apply_filters > "$WORK/all.txt"
+          COUNT=$(wc -l < "$WORK/all.txt")
+          if [ "$COUNT" -eq 0 ]; then
+            echo "::error::no files left to deploy after include/exclude filtering"; exit 1
+          fi
+          if [ "$COUNT" -le "$CAP" ]; then
+            SINGLE_BODY="$WORK/site.zip"
+            SINGLE_TYPE="application/zip"
+            zip -q -X "$SINGLE_BODY" -@ < "$WORK/all.txt"
+          fi
+        fi
+
+        TOTAL=""
+        if [ -n "$SINGLE_BODY" ]; then
+          hurl_post "$DEPLOY_URL" "$SINGLE_TYPE" "$SINGLE_BODY"
+        else
+          if [ -z "$API_KEY" ]; then
+            echo "::error::$COUNT files exceeds the $CAP files/request cap — drops this large need the 'api-key' input (chunked upload, requires an active hurl.page subscription)"
+            exit 1
+          fi
+          if [ "$COUNT" -gt 10000 ]; then
+            echo "::error::$COUNT files exceeds the 10,000 files/drop limit"
+            exit 1
+          fi
+
+          # hurl.page strips a single shared root dir from zips; mirror that for chunked drops
+          ROOT=$(awk -F/ '{print $1}' "$WORK/all.txt" | sort -u)
+          if [ "$(printf '%s\n' "$ROOT" | wc -l)" -eq 1 ] && [ -d "$ROOT" ]; then
+            cd "$ROOT"
+            sed -i "s|^$ROOT/||" "$WORK/all.txt"
+          fi
+
+          split -l 900 "$WORK/all.txt" "$WORK/chunk."
+          CHUNKS=$(ls "$WORK"/chunk.* | wc -l)
+          SLUG=""
+          URL=""
+          N=0
+          for LIST in "$WORK"/chunk.*; do
+            N=$((N+1))
+            ROOTS=$(awk -F/ '{print $1}' "$LIST" | sort -u | wc -l)
+            FIRST=$(head -n1 "$LIST")
+            if [ "$ROOTS" -eq 1 ] && [ "$FIRST" != "${FIRST#*/}" ]; then
+              # all files share one root dir — a zip would get root-stripped server-side, so send JSON
+              BODY="$WORK/body.json"
+              TYPE="application/json"
+              while IFS= read -r f; do
+                printf '%s\t%s\n' "$f" "$(base64 -w0 "$f")"
+              done < "$LIST" | jq -Rn '{files: ([inputs | split("\t") | {(.[0]): {encoding: "base64", content: .[1]}}] | add)}' > "$BODY"
+            else
+              BODY="$WORK/body.zip"
+              TYPE="application/zip"
+              rm -f "$BODY"
+              zip -q -X "$BODY" -@ < "$LIST"
+            fi
+            echo "Uploading chunk $N/$CHUNKS ($(wc -l < "$LIST") files)..."
+            if [ -z "$SLUG" ]; then
+              hurl_post "$DEPLOY_URL" "$TYPE" "$BODY"
+              SLUG=$(jq -r '.slug' "$RESP")
+              URL=$(jq -r '.url' "$RESP")
+              REPLACED=$(jq -r '.replaced // false' "$RESP")
+            else
+              hurl_post "$BASE/deploy/$SLUG" "$TYPE" "$BODY"
+            fi
+          done
+          TOTAL=$(jq -r '.total_files // empty' "$RESP")
+        fi
+
+        URL=${URL:-$(jq -r '.url' "$RESP")}
+        SLUG=${SLUG:-$(jq -r '.slug' "$RESP")}
+        EXPIRES=$(jq -r '.expires_at // empty' "$RESP")
+        REPLACED=${REPLACED:-$(jq -r '.replaced // false' "$RESP")}
+        echo "url=$URL" >> "$GITHUB_OUTPUT"
+        echo "slug=$SLUG" >> "$GITHUB_OUTPUT"
+        echo "expires_at=$EXPIRES" >> "$GITHUB_OUTPUT"
+        echo "replaced=$REPLACED" >> "$GITHUB_OUTPUT"
+
+        {
+          echo "### 🌐 hurl.page deploy"
+          echo ""
+          echo "| | |"
+          echo "|---|---|"
+          echo "| URL | $URL |"
+          if [ -n "${LABEL:-}" ]; then echo "| Report | $LABEL |"; fi
+          echo "| Slug | \`$SLUG\` |"
+          echo "| Expires | ${EXPIRES:-never} |"
+          if [ -n "$TOTAL" ]; then echo "| Files | $TOTAL |"; fi
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        if [ -n "$TOTAL" ]; then
+          echo "Deployed to $URL ($TOTAL files)"
+        else
+          echo "Deployed to $URL"
+        fi
+
+    - id: comment
+      if: ${{ inputs.comment == 'true' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        URL: ${{ steps.deploy.outputs.url }}
+        EXPIRES: ${{ steps.deploy.outputs.expires_at }}
+        LABEL: ${{ steps.plan.outputs.label }}
+        PR_NUMBER: ${{ github.event.pull_request.number || github.event.number }}
+        REPO: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        if [ -z "$PR_NUMBER" ]; then
+          echo "::notice::comment: true but this is not a pull request event — skipping PR comment"
+          exit 0
+        fi
+        [ -n "$GH_TOKEN" ] || { echo "::error::'comment' requires the 'github-token' input"; exit 1; }
+
+        API="${GITHUB_API_URL:-https://api.github.com}"
+        MARKER='<!-- hurl-page-action -->'
+        AUTH=(-H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json")
+        OUT=$(mktemp)
+
+        gh_call() {
+          local method=$1 url=$2 data=${3:-}
+          local args=(-sS -o "$OUT" -w '%{http_code}' "${AUTH[@]}" -X "$method" "$url")
+          if [ -n "$data" ]; then args+=(-d "$data"); fi
+          local code
+          code=$(curl "${args[@]}")
+          if [[ "$code" != 2* ]]; then
+            echo "::error::GitHub API $method failed (HTTP $code) — does the job have 'pull-requests: write' permission? $(cat "$OUT")"
+            exit 1
+          fi
+        }
+
+        BODY=$(jq -n --arg marker "$MARKER" --arg url "$URL" --arg exp "${EXPIRES:-never}" --arg label "${LABEL:-}" \
+          '{body: "\($marker)\n### 🌐 hurl.page preview\n\n\(if $label == "" then "" else "\($label) — " end)**\($url)**\n\nExpires: \(if $exp == "" then "never" else $exp end)"}')
+
+        gh_call GET "$API/repos/$REPO/issues/$PR_NUMBER/comments?per_page=100"
+        CID=$(jq -r --arg marker "$MARKER" '[.[] | select(.body | startswith($marker))][0].id // empty' "$OUT")
+        if [ -n "$CID" ]; then
+          gh_call PATCH "$API/repos/$REPO/issues/comments/$CID" "$BODY"
+          echo "Updated sticky PR comment ($CID)"
+        else
+          gh_call POST "$API/repos/$REPO/issues/$PR_NUMBER/comments" "$BODY"
+          echo "Posted sticky PR comment"
+        fi

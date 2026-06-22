@@ -1,0 +1,10 @@
+{
+  "engines": [
+    { "id": "playwright",  "label": "Playwright",      "emoji": "🎭", "candidates": ["playwright-report"], "entry": "index.html" },
+    { "id": "jacoco",      "label": "JaCoCo coverage", "emoji": "☕", "candidates": ["build/reports/jacoco/test/html", "target/site/jacoco"], "entry": "index.html" },
+    { "id": "gradle-test", "label": "Gradle tests",    "emoji": "🐘", "candidates": ["build/reports/tests/test"], "entry": "index.html" },
+    { "id": "coverage-py", "label": "Python coverage", "emoji": "🐍", "candidates": ["htmlcov"], "entry": "index.html" },
+    { "id": "storybook",   "label": "Storybook",       "emoji": "📚", "candidates": ["storybook-static"], "entry": "index.html" },
+    { "id": "allure",      "label": "Allure",          "emoji": "📊", "candidates": ["allure-report"], "entry": "index.html" }
+  ]
+}

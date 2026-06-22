@@ -1,0 +1,54 @@
+name: test
+on: push
+
+jobs:
+  deploy-and-verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./
+        id: deploy
+        with:
+          path: sample
+
+      - name: Verify deployment
+        env:
+          URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          echo "Checking $URL"
+          curl -fsS "$URL" | grep -q "hurl.page action sample"
+          curl -fsS "${URL}style.css" | grep -q "ea580c"
+          echo "✅ Live: $URL" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: ./
+        id: filtered
+        with:
+          path: sample
+          exclude: '*.css'
+
+      - name: Verify exclude filter
+        env:
+          URL: ${{ steps.filtered.outputs.url }}
+        run: |
+          set -euo pipefail
+          curl -fsS "$URL" | grep -q "hurl.page action sample"
+          CODE=$(curl -s -o /dev/null -w '%{http_code}' "${URL}style.css")
+          [ "$CODE" = "404" ]
+
+      - uses: ./
+        id: ttl
+        with:
+          path: sample/index.html
+          ttl: 3600
+
+      - name: Verify ttl
+        env:
+          URL: ${{ steps.ttl.outputs.url }}
+          EXPIRES: ${{ steps.ttl.outputs.expires_at }}
+        run: |
+          set -euo pipefail
+          echo "expires_at=$EXPIRES"
+          [ -n "$EXPIRES" ]
+          curl -fsSI "$URL" | grep -qi "x-drop-expires"
