@@ -27,7 +27,7 @@ Want them to stick around and unlock more? **[Create an account →](https://hur
 - **Vanity subdomains** on the Team plan (`acme--pr-42.shipped.page`).
 - 120 deploys/min per account.
 
-Pro is $4/mo, Team is $19/mo. Pass the key via `api-key:` or the `HURL_API_KEY` env var (see [Auth via env var](#auth-via-env-var)).
+Pro is $4/mo, Team is $19/mo. Pass the key via `api-key:` or the `SHIP_API_KEY` env var (see [Auth via env var](#auth-via-env-var)).
 
 ## Auto-detect & engine presets
 
@@ -58,7 +58,7 @@ Known engines: `playwright`, `jacoco`, `gradle-test`, `coverage-py` (htmlcov), `
   if: always()
   with:
     path: playwright-report
-    api-key: ${{ secrets.HURL_API_KEY }}
+    api-key: ${{ secrets.SHIP_API_KEY }}
 - if: always()
   run: echo "🎭 Playwright report: ${{ steps.report.outputs.url }}" >> "$GITHUB_STEP_SUMMARY"
 ```
@@ -76,7 +76,7 @@ steps:
     with:
       path: dist
       name: pr-${{ github.event.number }}
-      api-key: ${{ secrets.HURL_API_KEY }}
+      api-key: ${{ secrets.SHIP_API_KEY }}
       comment: true
 ```
 
@@ -110,7 +110,7 @@ Rules: `exclude` wins over `include`; `.git` is always excluded from directory d
 | Input | Required | Description |
 |---|---|---|
 | `path` | no | What to deploy: a `.html`/`.htm` file (single page), a `.zip` (multi-file site), or a directory (zipped & deployed). Omit it to auto-detect a known report — see `engine` |
-| `api-key` | no | hurl.page API key (`hp_...`) — pass via `secrets`. Falls back to a `HURL_API_KEY` env var if unset. Raises the per-request cap to 900 files and enables chunked uploads, named drops, and custom `ttl` beyond free limits |
+| `api-key` | no | hurl.page API key (`hp_...`) — pass via `secrets`. Falls back to a `SHIP_API_KEY` env var if unset. Raises the per-request cap to 900 files and enables chunked uploads, named drops, and custom `ttl` beyond free limits |
 | `name` | no | Named drop alias (1–41 chars of `[a-z0-9-]`, no `--`). Stable URL across redeploys. Requires `api-key` with an active subscription |
 | `ttl` | no | Drop lifetime in seconds (min 60). Default: 7 days anonymous/free, no expiry for subscribers. Free plan caps `ttl` at 7 days |
 | `include` | no | Newline-separated globs — when set, only matching files are deployed (directory/zip deploys) |
@@ -139,11 +139,11 @@ Requirements: the `api-key` input must be set and the key needs an active subscr
 
 ## Auth via env var
 
-Instead of wiring `api-key:` on every step, you can set the token once at workflow or job level — the action picks up `HURL_API_KEY` automatically:
+Instead of wiring `api-key:` on every step, you can set the token once at workflow or job level — the action picks up `SHIP_API_KEY` automatically:
 
 ```yaml
 env:
-  HURL_API_KEY: ${{ secrets.HURL_API_KEY }}
+  SHIP_API_KEY: ${{ secrets.SHIP_API_KEY }}
 ```
 
 The `api-key` input wins if both are set. Either way the key is only ever sent as an `Authorization` header to hurl.page — never in URLs or logs.
