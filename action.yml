@@ -10,7 +10,7 @@ inputs:
     required: false
     default: ''
   api-key:
-    description: 'ship.page API key (hp_...), pass via secrets. Falls back to the HURL_API_KEY env var. Optional for small drops; required for drops above the per-request file cap (chunked upload, needs an active subscription)'
+    description: 'ship.page API key (hp_...), pass via secrets. Falls back to the SHIP_API_KEY env var. Optional for small drops; required for drops above the per-request file cap (chunked upload, needs an active subscription)'
     required: false
     default: ''
   name:
@@ -110,7 +110,7 @@ runs:
         set -euo pipefail
         [ -e "$SRC" ] || { echo "::error::path '$SRC' does not exist"; exit 1; }
 
-        API_KEY="${API_KEY:-${HURL_API_KEY:-}}"
+        API_KEY="${API_KEY:-${SHIP_API_KEY:-}}"
         BASE="${BASE_INPUT:-${HURL_PAGE_BASE_URL:-https://ship.page}}"
         CAP=100
         AUTH=()
