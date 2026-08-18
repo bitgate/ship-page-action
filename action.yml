@@ -10,7 +10,7 @@ inputs:
     required: false
     default: ''
   api-key:
-    description: 'ship.page API key (hp_...), pass via secrets. Falls back to the SHIP_API_KEY env var. Optional for small drops; required for drops above the per-request file cap (chunked upload, needs an active subscription)'
+    description: 'ship.page API key (sp_...), pass via secrets. Falls back to the SHIP_API_KEY env var. Optional for small drops; required for drops above the per-request file cap (chunked upload, needs an active subscription)'
     required: false
     default: ''
   name:
