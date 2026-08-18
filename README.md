@@ -5,7 +5,7 @@ Deploy any HTML file, zip, or directory to [hurl.page](https://hurl.page) — in
 ## Usage
 
 ```yaml
-- uses: bitgate/hurl-page-action@v1
+- uses: bitgate/ship-page-action@v1
   id: deploy
   with:
     path: dist
@@ -35,10 +35,10 @@ Don't want to remember where your tool writes its report? Point the action at an
 
 ```yaml
 # Zero config — auto-detects every known report in the workspace
-- uses: bitgate/hurl-page-action@v1
+- uses: bitgate/ship-page-action@v1
 
 # Or name the engine (handy when the default path is tool-specific)
-- uses: bitgate/hurl-page-action@v1
+- uses: bitgate/ship-page-action@v1
   with:
     engine: jacoco            # probes the Gradle path, then the Maven path
 ```
@@ -53,7 +53,7 @@ Known engines: `playwright`, `jacoco`, `gradle-test`, `coverage-py` (htmlcov), `
 ## Example: publish a Playwright report
 
 ```yaml
-- uses: bitgate/hurl-page-action@v1
+- uses: bitgate/ship-page-action@v1
   id: report
   if: always()
   with:
@@ -72,7 +72,7 @@ permissions:
   pull-requests: write
 
 steps:
-  - uses: bitgate/hurl-page-action@v1
+  - uses: bitgate/ship-page-action@v1
     with:
       path: dist
       name: pr-${{ github.event.number }}
@@ -87,7 +87,7 @@ If the account has a vanity subdomain claimed (team plan), named drops serve at 
 `include` / `exclude` take newline-separated glob patterns, matched against each file's path relative to `path`. `*` also crosses `/`, so `*.map` matches nested files too:
 
 ```yaml
-- uses: bitgate/hurl-page-action@v1
+- uses: bitgate/ship-page-action@v1
   with:
     path: dist
     exclude: |
