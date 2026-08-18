@@ -12,7 +12,7 @@ Deploy any HTML file, zip, or directory to [ship.page](https://ship.page) — in
 - run: echo "Live at ${{ steps.deploy.outputs.url }}"
 ```
 
-## Free vs paid hurls
+## Free vs paid drops
 
 The snippet above needs **no account** — anonymous hurls are the default:
 
