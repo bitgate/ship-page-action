@@ -110,7 +110,7 @@ Rules: `exclude` wins over `include`; `.git` is always excluded from directory d
 | Input | Required | Description |
 |---|---|---|
 | `path` | no | What to deploy: a `.html`/`.htm` file (single page), a `.zip` (multi-file site), or a directory (zipped & deployed). Omit it to auto-detect a known report — see `engine` |
-| `api-key` | no | hurl.page API key (`hp_...`) — pass via `secrets`. Falls back to a `SHIP_API_KEY` env var if unset. Raises the per-request cap to 900 files and enables chunked uploads, named drops, and custom `ttl` beyond free limits |
+| `api-key` | no | hurl.page API key (`sp_...`) — pass via `secrets`. Falls back to a `SHIP_API_KEY` env var if unset. Raises the per-request cap to 900 files and enables chunked uploads, named drops, and custom `ttl` beyond free limits |
 | `name` | no | Named drop alias (1–41 chars of `[a-z0-9-]`, no `--`). Stable URL across redeploys. Requires `api-key` with an active subscription |
 | `ttl` | no | Drop lifetime in seconds (min 60). Default: 7 days anonymous/free, no expiry for subscribers. Free plan caps `ttl` at 7 days |
 | `include` | no | Newline-separated globs — when set, only matching files are deployed (directory/zip deploys) |
