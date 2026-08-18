@@ -14,7 +14,7 @@ Deploy any HTML file, zip, or directory to [ship.page](https://ship.page) — in
 
 ## Free vs paid drops
 
-The snippet above needs **no account** — anonymous hurls are the default:
+The snippet above needs **no account** — anonymous drops are the default:
 
 - No signup, no secrets. Just `path:`.
 - Live for **7 days** (or sooner with `ttl`), up to **100 files** per drop, ~10 deploys/min per IP.
