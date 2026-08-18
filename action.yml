@@ -1,5 +1,5 @@
-name: 'Deploy to hurl.page'
-description: 'Instant anonymous HTML hosting — deploy an HTML file, zip, or directory to hurl.page and get a live URL'
+name: 'Deploy to ship.page'
+description: 'Instant anonymous HTML hosting — deploy an HTML file, zip, or directory to ship.page and get a live URL'
 branding:
   icon: upload-cloud
   color: orange
@@ -10,7 +10,7 @@ inputs:
     required: false
     default: ''
   api-key:
-    description: 'hurl.page API key (hp_...), pass via secrets. Falls back to the HURL_API_KEY env var. Optional for small drops; required for drops above the per-request file cap (chunked upload, needs an active subscription)'
+    description: 'ship.page API key (hp_...), pass via secrets. Falls back to the HURL_API_KEY env var. Optional for small drops; required for drops above the per-request file cap (chunked upload, needs an active subscription)'
     required: false
     default: ''
   name:
@@ -38,7 +38,7 @@ inputs:
     required: false
     default: ${{ github.token }}
   base-url:
-    description: 'Override the hurl.page endpoint (staging/self-hosted). Defaults to https://ship.page'
+    description: 'Override the ship.page endpoint (staging/self-hosted). Defaults to https://ship.page'
     required: false
     default: ''
   engine:
@@ -169,7 +169,7 @@ runs:
               --data-binary @"$3")
             if [ "$code" = "429" ] && [ "$attempt" -lt 4 ]; then
               WAIT=$((20 * attempt))
-              echo "::warning::hurl.page rate limit hit (429) — retrying in ${WAIT}s (attempt $attempt/3)"
+              echo "::warning::ship.page rate limit hit (429) — retrying in ${WAIT}s (attempt $attempt/3)"
               sleep "$WAIT"
               continue
             fi
@@ -177,8 +177,8 @@ runs:
           done
           case "$code" in
             2*) ;;
-            429) echo "::error::hurl.page rate limit hit (~10 deploys/min/IP) — retries exhausted"; exit 1 ;;
-            *) echo "::error::hurl.page deploy failed (HTTP $code): $(cat "$RESP")"; exit 1 ;;
+            429) echo "::error::ship.page rate limit hit (~10 deploys/min/IP) — retries exhausted"; exit 1 ;;
+            *) echo "::error::ship.page deploy failed (HTTP $code): $(cat "$RESP")"; exit 1 ;;
           esac
         }
 
@@ -226,7 +226,7 @@ runs:
           hurl_post "$DEPLOY_URL" "$SINGLE_TYPE" "$SINGLE_BODY"
         else
           if [ -z "$API_KEY" ]; then
-            echo "::error::$COUNT files exceeds the $CAP files/request cap — drops this large need the 'api-key' input (chunked upload, requires an active hurl.page subscription)"
+            echo "::error::$COUNT files exceeds the $CAP files/request cap — drops this large need the 'api-key' input (chunked upload, requires an active ship.page subscription)"
             exit 1
           fi
           if [ "$COUNT" -gt 10000 ]; then
@@ -234,7 +234,7 @@ runs:
             exit 1
           fi
 
-          # hurl.page strips a single shared root dir from zips; mirror that for chunked drops
+          # ship.page strips a single shared root dir from zips; mirror that for chunked drops
           ROOT=$(awk -F/ '{print $1}' "$WORK/all.txt" | sort -u)
           if [ "$(printf '%s\n' "$ROOT" | wc -l)" -eq 1 ] && [ -d "$ROOT" ]; then
             cd "$ROOT"
@@ -286,7 +286,7 @@ runs:
         echo "replaced=$REPLACED" >> "$GITHUB_OUTPUT"
 
         {
-          echo "### 🌐 hurl.page deploy"
+          echo "### 🌐 ship.page deploy"
           echo ""
           echo "| | |"
           echo "|---|---|"
@@ -339,7 +339,7 @@ runs:
         }
 
         BODY=$(jq -n --arg marker "$MARKER" --arg url "$URL" --arg exp "${EXPIRES:-never}" --arg label "${LABEL:-}" \
-          '{body: "\($marker)\n### 🌐 hurl.page preview\n\n\(if $label == "" then "" else "\($label) — " end)**\($url)**\n\nExpires: \(if $exp == "" then "never" else $exp end)"}')
+          '{body: "\($marker)\n### 🌐 ship.page preview\n\n\(if $label == "" then "" else "\($label) — " end)**\($url)**\n\nExpires: \(if $exp == "" then "never" else $exp end)"}')
 
         gh_call GET "$API/repos/$REPO/issues/$PR_NUMBER/comments?per_page=100"
         CID=$(jq -r --arg marker "$MARKER" '[.[] | select(.body | startswith($marker))][0].id // empty' "$OUT")
