@@ -38,7 +38,7 @@ inputs:
     required: false
     default: ${{ github.token }}
   base-url:
-    description: 'Override the hurl.page endpoint (staging/self-hosted). Defaults to https://hurl.page'
+    description: 'Override the hurl.page endpoint (staging/self-hosted). Defaults to https://ship.page'
     required: false
     default: ''
   engine:
@@ -111,7 +111,7 @@ runs:
         [ -e "$SRC" ] || { echo "::error::path '$SRC' does not exist"; exit 1; }
 
         API_KEY="${API_KEY:-${HURL_API_KEY:-}}"
-        BASE="${BASE_INPUT:-${HURL_PAGE_BASE_URL:-https://hurl.page}}"
+        BASE="${BASE_INPUT:-${HURL_PAGE_BASE_URL:-https://ship.page}}"
         CAP=100
         AUTH=()
         if [ -n "$API_KEY" ]; then
