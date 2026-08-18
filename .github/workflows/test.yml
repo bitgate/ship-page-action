@@ -18,7 +18,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "Checking $URL"
-          curl -fsS "$URL" | grep -q "hurl.page action sample"
+          curl -fsS "$URL" | grep -q "ship.page action sample"
           curl -fsS "${URL}style.css" | grep -q "ea580c"
           echo "✅ Live: $URL" >> "$GITHUB_STEP_SUMMARY"
 
@@ -33,7 +33,7 @@ jobs:
           URL: ${{ steps.filtered.outputs.url }}
         run: |
           set -euo pipefail
-          curl -fsS "$URL" | grep -q "hurl.page action sample"
+          curl -fsS "$URL" | grep -q "ship.page action sample"
           CODE=$(curl -s -o /dev/null -w '%{http_code}' "${URL}style.css")
           [ "$CODE" = "404" ]
 
