@@ -91,7 +91,7 @@ runs:
           echo "label=" >> "$GITHUB_OUTPUT"
           exit 0
         fi
-        STAGE="$(mktemp -d "${RUNNER_TEMP:-/tmp}/hurlpage.XXXXXX")"
+        STAGE="$(mktemp -d "${RUNNER_TEMP:-/tmp}/shippage.XXXXXX")"
         HP_CWD="$CWD" HP_ENGINE="$ENGINE" HP_PATH="$SRC_INPUT" HP_ROOT_FILE="$ROOT_FILE" HP_STAGE="$STAGE" \
           node "$GITHUB_ACTION_PATH/lib/plan.mjs"
 
