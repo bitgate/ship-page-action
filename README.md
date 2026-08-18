@@ -1,6 +1,6 @@
-# hurl.page action
+# ship.page action
 
-Deploy any HTML file, zip, or directory to [hurl.page](https://hurl.page) — instant anonymous hosting, no auth, no setup. Get a live URL back.
+Deploy any HTML file, zip, or directory to [ship.page](https://ship.page) — instant anonymous hosting, no auth, no setup. Get a live URL back.
 
 ## Usage
 
@@ -20,7 +20,7 @@ The snippet above needs **no account** — anonymous hurls are the default:
 - Live for **7 days** (or sooner with `ttl`), up to **100 files** per drop, ~10 deploys/min per IP.
 - Built for throwaway CI artifacts and PR previews.
 
-Want them to stick around and unlock more? **[Create an account →](https://hurl.page/dashboard)**, mint an API key, and pass it as `api-key`:
+Want them to stick around and unlock more? **[Create an account →](https://ship.page/dashboard)**, mint an API key, and pass it as `api-key`:
 
 - **No expiry** (or set any `ttl` you like), up to **900 files** per request and **chunked uploads to 10,000 files**.
 - **Named drops** — one stable URL per PR across redeploys (`name: pr-${{ github.event.number }}`).
@@ -110,14 +110,14 @@ Rules: `exclude` wins over `include`; `.git` is always excluded from directory d
 | Input | Required | Description |
 |---|---|---|
 | `path` | no | What to deploy: a `.html`/`.htm` file (single page), a `.zip` (multi-file site), or a directory (zipped & deployed). Omit it to auto-detect a known report — see `engine` |
-| `api-key` | no | hurl.page API key (`sp_...`) — pass via `secrets`. Falls back to a `SHIP_API_KEY` env var if unset. Raises the per-request cap to 900 files and enables chunked uploads, named drops, and custom `ttl` beyond free limits |
+| `api-key` | no | ship.page API key (`sp_...`) — pass via `secrets`. Falls back to a `SHIP_API_KEY` env var if unset. Raises the per-request cap to 900 files and enables chunked uploads, named drops, and custom `ttl` beyond free limits |
 | `name` | no | Named drop alias (1–41 chars of `[a-z0-9-]`, no `--`). Stable URL across redeploys. Requires `api-key` with an active subscription |
 | `ttl` | no | Drop lifetime in seconds (min 60). Default: 7 days anonymous/free, no expiry for subscribers. Free plan caps `ttl` at 7 days |
 | `include` | no | Newline-separated globs — when set, only matching files are deployed (directory/zip deploys) |
 | `exclude` | no | Newline-separated globs to skip. Wins over `include`; `.git` always excluded |
 | `comment` | no | `true` posts/updates a sticky PR comment with the deploy URL. Needs `pull-requests: write` permission (no-op on non-PR events) |
 | `github-token` | no | Token used for the PR comment. Default: `github.token` |
-| `base-url` | no | Override the hurl.page endpoint (staging/self-hosted). Default: `https://hurl.page` |
+| `base-url` | no | Override the ship.page endpoint (staging/self-hosted). Default: `https://ship.page` |
 | `engine` | no | Report preset(s) to auto-detect instead of a manual `path`. `auto` (also the default when `path` and `engine` are both empty) probes every known report and deploys all it finds — 1 lands directly, 2+ get a branded switcher. A name scopes to one; a comma list forces a set. Known: `playwright`, `jacoco`, `gradle-test`, `coverage-py`, `storybook`, `allure` |
 | `working-directory` | no | Scopes the whole action (detection, path resolution, staging) to this dir — for monorepos |
 | `root-file` | no | Entry file the URL opens on (e.g. `report.html`). When not `index.html`, a redirect `index.html` is injected |
@@ -133,7 +133,7 @@ Rules: `exclude` wins over `include`; `.git` is always excluded from directory d
 
 ## Large drops (chunked upload)
 
-hurl.page caps a single request at 100 files (free) / 900 files (subscription). If your directory or zip has more, the action automatically splits it into batches of 900: the first goes to `POST /deploy`, the rest are appended via `POST /deploy/<slug>`. The final site is identical to a one-shot deploy.
+ship.page caps a single request at 100 files (free) / 900 files (subscription). If your directory or zip has more, the action automatically splits it into batches of 900: the first goes to `POST /deploy`, the rest are appended via `POST /deploy/<slug>`. The final site is identical to a one-shot deploy.
 
 Requirements: the `api-key` input must be set and the key needs an active subscription (appending is a paid feature — the step fails with the API's error otherwise). Hard limit: 10,000 files per drop.
 
@@ -146,7 +146,7 @@ env:
   SHIP_API_KEY: ${{ secrets.SHIP_API_KEY }}
 ```
 
-The `api-key` input wins if both are set. Either way the key is only ever sent as an `Authorization` header to hurl.page — never in URLs or logs.
+The `api-key` input wins if both are set. Either way the key is only ever sent as an `Authorization` header to ship.page — never in URLs or logs.
 
 ## Notes
 
