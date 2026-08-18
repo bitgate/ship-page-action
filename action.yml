@@ -2,7 +2,7 @@ name: 'Deploy to ship.page'
 description: 'Deploy HTML, zips, or build folders to ship.page — instant live URL, no signup'
 branding:
   icon: upload-cloud
-  color: orange
+  color: blue
 
 inputs:
   path:
