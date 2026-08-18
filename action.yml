@@ -159,7 +159,7 @@ runs:
           done
         }
 
-        hurl_post() {
+        ship_post() {
           local code attempt
           for attempt in 1 2 3 4; do
             code=$(curl -sS -o "$RESP" -w '%{http_code}' \
@@ -223,7 +223,7 @@ runs:
 
         TOTAL=""
         if [ -n "$SINGLE_BODY" ]; then
-          hurl_post "$DEPLOY_URL" "$SINGLE_TYPE" "$SINGLE_BODY"
+          ship_post "$DEPLOY_URL" "$SINGLE_TYPE" "$SINGLE_BODY"
         else
           if [ -z "$API_KEY" ]; then
             echo "::error::$COUNT files exceeds the $CAP files/request cap — drops this large need the 'api-key' input (chunked upload, requires an active ship.page subscription)"
@@ -265,12 +265,12 @@ runs:
             fi
             echo "Uploading chunk $N/$CHUNKS ($(wc -l < "$LIST") files)..."
             if [ -z "$SLUG" ]; then
-              hurl_post "$DEPLOY_URL" "$TYPE" "$BODY"
+              ship_post "$DEPLOY_URL" "$TYPE" "$BODY"
               SLUG=$(jq -r '.slug' "$RESP")
               URL=$(jq -r '.url' "$RESP")
               REPLACED=$(jq -r '.replaced // false' "$RESP")
             else
-              hurl_post "$BASE/deploy/$SLUG" "$TYPE" "$BODY"
+              ship_post "$BASE/deploy/$SLUG" "$TYPE" "$BODY"
             fi
           done
           TOTAL=$(jq -r '.total_files // empty' "$RESP")
