@@ -111,7 +111,7 @@ runs:
         [ -e "$SRC" ] || { echo "::error::path '$SRC' does not exist"; exit 1; }
 
         API_KEY="${API_KEY:-${SHIP_API_KEY:-}}"
-        BASE="${BASE_INPUT:-${HURL_PAGE_BASE_URL:-https://ship.page}}"
+        BASE="${BASE_INPUT:-${SHIP_PAGE_BASE_URL:-https://ship.page}}"
         CAP=100
         AUTH=()
         if [ -n "$API_KEY" ]; then
