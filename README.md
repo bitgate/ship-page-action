@@ -24,7 +24,7 @@ Want them to stick around and unlock more? **[Create an account →](https://hur
 
 - **No expiry** (or set any `ttl` you like), up to **900 files** per request and **chunked uploads to 10,000 files**.
 - **Named drops** — one stable URL per PR across redeploys (`name: pr-${{ github.event.number }}`).
-- **Vanity subdomains** on the Team plan (`acme--pr-42.hurled.page`).
+- **Vanity subdomains** on the Team plan (`acme--pr-42.shipped.page`).
 - 120 deploys/min per account.
 
 Pro is $4/mo, Team is $19/mo. Pass the key via `api-key:` or the `HURL_API_KEY` env var (see [Auth via env var](#auth-via-env-var)).
@@ -80,7 +80,7 @@ steps:
       comment: true
 ```
 
-If the account has a vanity subdomain claimed (team plan), named drops serve at `https://<sub>--<name>.hurled.page/`.
+If the account has a vanity subdomain claimed (team plan), named drops serve at `https://<sub>--<name>.shipped.page/`.
 
 ## Filtering files
 
@@ -126,7 +126,7 @@ Rules: `exclude` wins over `include`; `.git` is always excluded from directory d
 
 | Output | Description |
 |---|---|
-| `url` | Public URL of the deployed site — every drop mounts at its own subdomain root (`https://<slug>.hurled.page/`), so absolute paths like `/app.js` just work |
+| `url` | Public URL of the deployed site — every drop mounts at its own subdomain root (`https://<slug>.shipped.page/`), so absolute paths like `/app.js` just work |
 | `slug` | Deployment slug |
 | `expires_at` | ISO timestamp when the drop expires (empty = never) |
 | `replaced` | `true` when a named drop redeploy replaced existing content |
@@ -153,4 +153,4 @@ The `api-key` input wins if both are set. Either way the key is only ever sent a
 - Anonymous/free drops expire after 7 days (or sooner with `ttl`) — perfect for CI artifacts, not for production hosting. Subscriber drops never expire unless `ttl` is set.
 - Rate limit: ~10 deploys/min/IP anonymous, 120/min for subscribers. On 429 the action retries 3× with increasing backoff before failing.
 - Every deploy writes URL, slug, and expiry to the job summary automatically.
-- User content is served only on `*.hurled.page`; the `url` output already points there.
+- User content is served only on `*.shipped.page`; the `url` output already points there.
