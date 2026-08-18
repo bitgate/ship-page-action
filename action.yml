@@ -1,5 +1,5 @@
 name: 'Deploy to ship.page'
-description: 'Instant anonymous HTML hosting — deploy an HTML file, zip, or directory to ship.page and get a live URL'
+description: 'Deploy HTML, zips, or build folders to ship.page — instant live URL, no signup'
 branding:
   icon: upload-cloud
   color: orange
