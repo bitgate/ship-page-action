@@ -46,7 +46,18 @@ Don't want to remember where your tool writes its report? Point the action at an
 - **1 report found** → deployed directly; the URL lands straight on it.
 - **2+ found** (or an explicit list like `engine: playwright,jacoco`) → all bundled into one drop behind a **branded switcher page** (top nav + report dropdown) — one URL, every report.
 
-Known engines: `playwright`, `jacoco`, `gradle-test`, `coverage-py` (htmlcov), `storybook`, `allure`. Reports with no fixed default path (e.g. self-contained `pytest-html`, `go cover`) still take an explicit `path:`.
+Engine presets — what each one detects (all serve the report's `index.html`):
+
+| Preset | Report | Auto-detected paths |
+|---|---|---|
+| `playwright` | Playwright HTML report | `playwright-report/` |
+| `jacoco` | JaCoCo coverage | `build/reports/jacoco/test/html/` (Gradle), `target/site/jacoco/` (Maven) |
+| `gradle-test` | Gradle test report | `build/reports/tests/test/` |
+| `coverage-py` | coverage.py / pytest-cov | `htmlcov/` |
+| `storybook` | Storybook static build | `storybook-static/` |
+| `allure` | Allure report | `allure-report/` |
+
+Reports with no fixed default path (e.g. self-contained `pytest-html`, `go cover`) still take an explicit `path:`.
 
 `working-directory:` scopes detection to a subdir (monorepos); `root-file:` sets the entry page when it isn't `index.html` (e.g. Robot Framework's `report.html`), injecting a redirect so the URL opens on the right page.
 
