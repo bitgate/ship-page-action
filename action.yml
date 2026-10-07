@@ -165,6 +165,7 @@ runs:
             code=$(curl -sS -o "$RESP" -w '%{http_code}' \
               -X POST "$1" \
               -H "Content-Type: $2" \
+              -H "X-Ship-Source: github-action" \
               "${AUTH[@]}" \
               --data-binary @"$3")
             if [ "$code" = "429" ] && [ "$attempt" -lt 4 ]; then
